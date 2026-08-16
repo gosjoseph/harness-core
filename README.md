@@ -8,24 +8,36 @@ entidad escriba y califique.
 
 Este repo es una PLANTILLA, no un proyecto corriendo: los artefactos de
 `harness/` y `scripts/` traen placeholders `__NOMBRE__` en vez de nombres de
-proyecto concretos. Consumirlo (forma de consumo aprobada: `bootstrap.sh
-<app>`, generación por copia+sustitución, sin dependencia de submódulo) es
-responsabilidad del script bootstrap de un repo cliente — este repo solo
-provee el material fuente y su propio test suite de sandbox.
+proyecto concretos. Consumirlo es correr `bootstrap.sh <app>` (generación por
+copia+sustitución, sin dependencia de submódulo) desde el directorio destino
+— ver «Cómo generar un harness nuevo» abajo.
 
 ## Qué hay acá
 
-- `scripts/` — 3 scripts GENÉRICOS, portables sin cambios: `check-hook.sh`
+- `bootstrap.sh <app> [destino]` — genera el harness completo (tooling +
+  skeleton de infra) en el directorio destino (default: cwd), sin dejar
+  dependencia de submódulo. Ver «Cómo generar un harness nuevo» abajo.
+- `scripts/` — scripts GENÉRICOS, portables sin cambios: `check-hook.sh`
   (gate de hooks instalados + anti-empates de `priority`), `check-priority-ties.mjs`
   (algoritmo del gate anti-empates), `inflight.mjs` (registro de claims de
-  trabajo en vuelo entre sesiones concurrentes). También `setup-hooks.sh`
-  (activa `core.hooksPath=.githooks`, idempotente).
+  trabajo en vuelo entre sesiones concurrentes), `setup-hooks.sh` (activa
+  `core.hooksPath=.githooks`, idempotente), y `render.sh` (sustituye
+  variables `__NOMBRE__` sobre un árbol de archivos — lo usan `bootstrap.sh`
+  y `tests/run-tests.sh`).
 - `harness/init.sh`, `harness/loop.sh` — el baseline y el runner del loop,
   PARAMETRIZADOS vía las variables de `PARAMS.md`.
 - `harness/loop-status.sh` — lectura de solo lectura de si hay un loop vivo
   (lockfile + fallback `pgrep` anclado al intérprete), GENÉRICO.
 - `harness/session-handoff.md`, `harness/clean-state-checklist.md` — templates
   de clock-out, PARAMETRIZADOS solo en las rutas que citan.
+- `harness/GOAL.template.md`, `harness/claude-progress.template.md`,
+  `harness/evaluator-rubric.template.md`, `harness/como-sembrar-features.template.md`,
+  `harness/patterns.template.md`, `harness/CLAUDE.workspace.template.md` —
+  skeletons de la memoria durable de `infra/harness/` que genera
+  `bootstrap.sh`: procedimiento y estructura reusables, con el contenido
+  narrativo/de negocio (goal real, catálogo de consolas prohibidas,
+  veredictos, sesiones) removido a propósito — lo completa cada proyecto
+  cliente.
 - `harness/prompts/implementer.md`, `harness/prompts/verifier.md` — los dos
   roles del patrón "nunca la misma entidad escribe y califica",
   PARAMETRIZADOS en rutas y nombre del proyecto.
@@ -36,15 +48,35 @@ provee el material fuente y su propio test suite de sandbox.
 - `.githooks/pre-push` — el gate "puente sin CI" que corre `scripts/check-hook.sh`
   antes de dejar pasar un push a `main`.
 - `tests/` — suite de sandbox: renderiza los templates con variables de
-  prueba en un workspace temporal (`mktemp -d`) y ejercita `init.sh`/`loop.sh`
-  ahí, nunca contra un workspace real.
+  prueba en un workspace temporal (`mktemp -d`) y ejercita
+  `init.sh`/`loop.sh`/`bootstrap.sh` ahí, nunca contra un workspace real.
+  Incluye un test MULTI-LOOP: dos harnesses bootstrapeados en sandboxes
+  separados corren `loop.sh` a la vez sin colisión de locks, logs ni
+  commits.
 
-Lo que a propósito NO está acá (queda `ESPECÍFICO` de cada proyecto, según el
-scout de origen — `plans/2026-08-16-tpl-scout-harness-core.md` del repo de
-docs del proyecto que generó este template): `GOAL.md` real, `claude-progress.md`
-real, `evaluator-rubric.md` con veredictos reales, `como-sembrar-features.md`/
-`patterns.md` con ejemplos concretos, y el contenido real de cualquier
-`feature_list.json`. Esos los escribe y mantiene cada proyecto cliente.
+Lo que a propósito NO está acá (contenido real, específico de cada
+proyecto): el `GOAL.md` completo (objetivo y catálogo de restricciones del
+negocio), las sesiones reales de `claude-progress.md`, los veredictos reales
+de `evaluator-rubric.md`, los ejemplos numéricos de
+`como-sembrar-features.md`/`patterns.md`, y el contenido real de cualquier
+`feature_list.json`. Esos los escribe y mantiene cada proyecto cliente sobre
+el skeleton que genera `bootstrap.sh`.
+
+## Cómo generar un harness nuevo
+
+```bash
+mkdir mi-proyecto-nuevo && cd mi-proyecto-nuevo
+bash /ruta/a/harness-core/bootstrap.sh mi-proyecto-nuevo
+```
+
+Genera `mi-proyecto-nuevo_tooling/` (ejecutable + `feature_list.json` vacío)
+y `infra/` (skeleton de `harness/`) en el directorio actual. Variables de
+config opcionales por entorno (`PROJECT_NAME`, `WORKSPACE_ENV_VAR`,
+`TOOLING_REPO`, `APP_REPOS`, etc. — ver `PARAMS.md`); sin ellas, `bootstrap.sh`
+deriva defaults razonables del nombre del proyecto y nunca lee de stdin. El
+script termina imprimiendo qué generó y qué queda pendiente de completar a
+mano (el `GOAL.md` real, el catálogo de restricciones del negocio, sembrar
+`feature_list.json`).
 
 ## Variables de parametrización
 

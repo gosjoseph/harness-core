@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # render.sh — sustituye las variables __NOMBRE__ de PARAMS.md en un árbol de
-# archivos. Es la simulación mínima de lo que hará bootstrap.sh (repo aparte,
-# TPL-F2): copia src -> dst y aplica sed con el mapa de variables recibido
-# como pares NOMBRE=valor en argv. Uso interno de tests/run-tests.sh, pero
-# vive en su propio archivo para no mezclar "cómo se genera" con "qué se
-# prueba".
+# archivos: copia src -> dst y aplica sed con el mapa de variables recibido
+# como pares NOMBRE=valor en argv. GENÉRICO, sin dependencia de ningún
+# proyecto concreto. Lo usan tanto `bootstrap.sh` (generación real) como
+# `tests/run-tests.sh` (sandbox de prueba) — vive en `scripts/` en vez de
+# `tests/` justamente porque no es exclusivo del test suite.
 set -euo pipefail
 
 src="$1"; dst="$2"; shift 2

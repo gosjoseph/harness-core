@@ -53,7 +53,7 @@ render_file() {
   local tmp; tmp="$(mktemp -d)"
   mkdir -p "$tmp/d"
   cp "$src" "$tmp/d/$(basename "$src")"
-  bash "$HERE/render.sh" "$tmp/d" "$tmp/out" "${RENDER_ARGS[@]}"
+  bash "$ROOT/scripts/render.sh" "$tmp/d" "$tmp/out" "${RENDER_ARGS[@]}"
   cp "$tmp/out/$(basename "$src")" "$dst"
   rm -rf "$tmp"
 }
@@ -213,6 +213,76 @@ if [ "$RC5" -eq 0 ] && printf '%s' "$OUT5" | grep -q "PID $$"; then
 else
   bad "loop-status.sh NO reportó VIVO para un lock con PID realmente vivo (rc=$RC5): $OUT5"
 fi
+
+# ---- Test 6: bootstrap.sh genera un harness completo y funcional ----------
+BOOT_SANDBOX="$(mktemp -d)"
+BOOT_OUT="$(cd "$BOOT_SANDBOX" && bash "$ROOT/bootstrap.sh" demoapp 2>&1)"
+BOOT_RC=$?
+if [ "$BOOT_RC" -eq 0 ] \
+  && [ -f "$BOOT_SANDBOX/demoapp_tooling/harness/init.sh" ] \
+  && [ -f "$BOOT_SANDBOX/demoapp_tooling/harness/feature_list.json" ] \
+  && [ -f "$BOOT_SANDBOX/infra/harness/GOAL.md" ] \
+  && [ -f "$BOOT_SANDBOX/infra/harness/CLAUDE.workspace.md" ] \
+  && [ "$(grep -ril gosjoseph "$BOOT_SANDBOX/infra/harness/" | wc -l)" -eq 0 ] \
+  && [ "$(jq '.features | length' "$BOOT_SANDBOX/demoapp_tooling/harness/feature_list.json")" -eq 0 ]; then
+  ok "bootstrap.sh demoapp: genera tooling + skeleton de infra, sin rastro de 'gosjoseph', feature_list vacío"
+else
+  bad "bootstrap.sh demoapp: generación incompleta o con rastro de 'gosjoseph' (rc=$BOOT_RC): $(printf '%s' "$BOOT_OUT" | tail -10)"
+fi
+
+init_repo "$BOOT_SANDBOX/demoapp_tooling"
+init_repo "$BOOT_SANDBOX/infra"
+( cd "$BOOT_SANDBOX/demoapp_tooling" && sh scripts/setup-hooks.sh >/dev/null )
+BOOT_INIT_OUT="$(cd "$BOOT_SANDBOX" && DEMOAPP_WORKSPACE="$BOOT_SANDBOX" bash demoapp_tooling/harness/init.sh 2>&1)"
+BOOT_INIT_RC=$?
+if [ "$BOOT_INIT_RC" -eq 0 ] && printf '%s' "$BOOT_INIT_OUT" | grep -q "BASELINE VERDE"; then
+  ok "harness generado por bootstrap.sh ARRANCA: init.sh → BASELINE VERDE"
+else
+  bad "harness generado por bootstrap.sh NO arrancó (rc=$BOOT_INIT_RC): $(printf '%s' "$BOOT_INIT_OUT" | tail -10)"
+fi
+rm -rf "$BOOT_SANDBOX"
+[ -d "$BOOT_SANDBOX" ] && bad "BOOT_SANDBOX sobrevivió al cleanup" || ok "sandbox de bootstrap.sh borrado al terminar"
+
+# ---- Test 7 (MULTI-LOOP): dos workspaces bootstrapeados corren loop.sh a la
+# vez sin colisión de locks, logs ni commits (pedido de Adri, 2026-08-16) ----
+ML1="$(mktemp -d)"; ML2="$(mktemp -d)"
+( cd "$ML1" && bash "$ROOT/bootstrap.sh" demoapp >/dev/null )
+( cd "$ML2" && bash "$ROOT/bootstrap.sh" otraapp >/dev/null )
+for pair in "$ML1 demoapp SBX-1" "$ML2 otraapp SBX-1"; do
+  set -- $pair
+  init_repo "$1/${2}_tooling"
+  init_repo "$1/infra"
+  ( cd "$1/${2}_tooling" && sh scripts/setup-hooks.sh >/dev/null )
+  cat > "$1/${2}_tooling/harness/feature_list.json" <<JSON
+{"project":"$2","last_updated":"2026-01-01","rules":{},"status_legend":{},
+ "features":[{"id":"$3","priority":1,"area":"test","tema":"test","title":"fixture",
+ "user_visible_behavior":"ninguno","status":"not_started","verification":["true"],
+ "evidence":[],"notes":""}]}
+JSON
+  ( cd "$1/${2}_tooling" && git add -A && git commit -q -m "seed feature" )
+done
+ML_TMP1="$(mktemp)"; ML_TMP2="$(mktemp)"
+( cd "$ML1" && DEMOAPP_WORKSPACE="$ML1" PATH="$BIN_DIR:$PATH" LOOP_MAX_ITER=1 \
+  LOOP_PERMISSION_MODE=bypassPermissions bash demoapp_tooling/harness/loop.sh > "$ML_TMP1" 2>&1 ) &
+ML_PID1=$!
+( cd "$ML2" && OTRAAPP_WORKSPACE="$ML2" PATH="$BIN_DIR:$PATH" LOOP_MAX_ITER=1 \
+  LOOP_PERMISSION_MODE=bypassPermissions bash otraapp_tooling/harness/loop.sh > "$ML_TMP2" 2>&1 ) &
+ML_PID2=$!
+wait "$ML_PID1"; ML_RC1=$?
+wait "$ML_PID2"; ML_RC2=$?
+rm -f "$ML_TMP1" "$ML_TMP2"
+ML_LOG1="$ML1/demoapp_tooling/harness/logs"
+ML_LOG2="$ML2/otraapp_tooling/harness/logs"
+if [ "$ML_RC1" -eq 5 ] && [ "$ML_RC2" -eq 5 ] \
+  && [ "$(ls "$ML_LOG1" | grep -c SBX-1)" -gt 0 ] \
+  && [ "$(ls "$ML_LOG2" | grep -c SBX-1)" -gt 0 ] \
+  && [ "$(git -C "$ML1/demoapp_tooling" log --oneline | wc -l)" -eq "$(git -C "$ML2/otraapp_tooling" log --oneline | wc -l)" ] \
+  && [ "$(git -C "$ML1/demoapp_tooling" rev-parse HEAD)" != "$(git -C "$ML2/otraapp_tooling" rev-parse HEAD)" ]; then
+  ok "MULTI-LOOP: dos sandboxes bootstrapeados corren loop.sh a la vez → ambos STOP(max_iter)/rc=5, logs e historias separadas"
+else
+  bad "MULTI-LOOP: colisión o resultado inesperado (rc1=$ML_RC1 rc2=$ML_RC2)"
+fi
+rm -rf "$ML1" "$ML2"
 
 echo
 echo "=== resultado: $PASS/$((PASS+FAIL)) tests OK ==="
