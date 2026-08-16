@@ -1,0 +1,21 @@
+{
+  "project": "__PROJECT_NAME__",
+  "last_updated": "__TODAY__",
+  "rules": {
+    "single_active_feature": true,
+    "passing_requires_evidence": true,
+    "do_not_skip_verification": true,
+    "verifier_must_be_independent": true,
+    "source_of_themes": "Completar: dónde vive el catálogo de temas/prioridades del proyecto (doc humano fuera de este archivo). Este archivo es la máquina de estados, no reemplaza a esos docs.",
+    "self_modifying": "Campo booleano opcional por feature. true = sus paths de destino incluyen ejecutables o prompts del harness: __TOOLING_REPO__/harness/loop.sh, __TOOLING_REPO__/harness/init.sh, __INFRA_REPO__/harness/prompts/*.md, o el esquema de este mismo archivo. El loop NO la toma: active_feature() la saltea en todas las ramas logueando «requiere sesión standalone» y sigue con la siguiente por prioridad; se ejecuta (implementer Y verifier) como sesión standalone fuera del loop. El loop no trabaja sobre sí mismo — protocolo completo: __INFRA_REPO__/harness/patterns.md § «El loop no trabaja sobre sí mismo». Se marca a mano al sembrar."
+  },
+  "status_legend": {
+    "not_started": "Sin empezar.",
+    "in_progress": "Feature activa: un implementer la está trabajando ahora (solo puede haber UNA en todo el workspace). Transición: not_started → in_progress la pone SOLO el implementer al tomarla; al terminar, la mueve a awaiting_verifier (si dejó evidencia) o blocked — nunca la deja in_progress.",
+    "awaiting_verifier": "El implementer terminó y dejó evidencia; espera el sello de un verifier independiente. No cuenta para WIP=1 (init.sh solo cuenta in_progress) y el loop la drena antes de abrir trabajo nuevo. Transición: in_progress → awaiting_verifier la pone SOLO el implementer al terminar; awaiting_verifier → passing, o de vuelta a in_progress si el verifier encuentra un gap (Revise), lo pone SOLO el verifier.",
+    "blocked": "No continúa hasta resolver el blocker documentado en notes.",
+    "passing": "Verificación corrió con éxito y la evidencia está registrada. Irreversible.",
+    "superseded": "Fundida en otra feature por decisión explícita: no se trabaja por separado. La nota dice en cuál y cuándo."
+  },
+  "features": []
+}

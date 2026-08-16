@@ -1,0 +1,48 @@
+#!/bin/sh
+# PUENTE SIN CI: gate local para push a main.
+#
+# Mientras no haya CI paga o gratuita disponible, este hook corre LOCALMENTE
+# el gate de push y aborta el push SOLO si falla. Revertir a un gate de
+# servidor cuando el proyecto tenga CI.
+#
+# Sigue siendo local: se saltea con --no-verify y no existe en un clone sin
+# core.hooksPath. No es un gate de servidor.
+
+protected_branch='main'
+push_to_main=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/"$protected_branch") push_to_main=1 ;;
+  esac
+done
+
+# Nada que empuje a main -> no corremos el gate.
+[ "$push_to_main" -eq 1 ] || exit 0
+
+# Correr desde la raíz del working tree actual. --show-toplevel apunta al
+# checkout en curso, así que funciona igual en el repo principal y en
+# worktrees (core.hooksPath se hereda vía el git-dir común).
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+
+gate='sh scripts/check-hook.sh'
+
+echo "🔎 PUENTE SIN CI: corriendo gate local antes de pushear a main..." >&2
+echo "   $gate" >&2
+
+if eval "$gate"; then
+  echo "✅ Gate local verde — push a main permitido." >&2
+  exit 0
+fi
+
+cat >&2 <<EOF
+
+✋ Push a main ABORTADO: el gate local falló (ver la salida de arriba).
+
+Re-correr el gate a mano:
+  $gate
+
+--no-verify está PROHIBIDO salvo emergencia documentada (dejá el porqué en el
+commit).
+EOF
+exit 1
