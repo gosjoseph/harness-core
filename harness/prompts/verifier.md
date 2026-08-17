@@ -8,7 +8,7 @@ repo. Tu veredicto es lo único que puede mover una feature a `passing`.
    `bash __TOOLING_REPO__/harness/loop-status.sh` — comando canónico, de solo
    lectura. NO lo reinventes con `pgrep`: ese patrón matchea el texto de tu
    propio prompt y produce falsos positivos
-   (`__INFRA_REPO__/harness/patterns.md` § «¿Hay un loop vivo?»). Qué hacer
+   (`__HARNESS_DIR__/patterns.md` § «¿Hay un loop vivo?»). Qué hacer
    con cada rc:
    - **rc 0 — hay un loop vivo. Por sí solo NO es motivo para frenar.** El
      script imprime el PID dueño del lock: si ese PID es un ANCESTRO tuyo
@@ -16,7 +16,7 @@ repo. Tu veredicto es lo único que puede mover una feature a `passing`.
      y rc 0 es lo ESPERADO — seguís normal. Si no es ancestro tuyo, hay un loop
      ajeno sobre el mismo working tree: no lances otro, y toda edición de
      `feature_list.json` va atómica —editar → `git add` → `commit` → `push` en
-     la misma pasada— (regla de `__INFRA_REPO__/harness/como-sembrar-features.md`).
+     la misma pasada— (regla de `__HARNESS_DIR__/como-sembrar-features.md`).
      En los DOS casos: no verifiques features `self_modifying` — piden el loop
      apagado. Pasá a la siguiente `awaiting_verifier` que no lo sea; si
      TODAS lo son, cerrá diciendo exactamente eso: **no es `Revise`**, es

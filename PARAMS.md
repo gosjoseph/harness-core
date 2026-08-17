@@ -12,6 +12,7 @@ __PROJECT_NAME__ — nombre humano del proyecto (ej. "Gosjoseph").
 __WORKSPACE_ENV_VAR__ — nombre de la env var que apunta a la raíz del workspace (ej. "GOSJOSEPH_WORKSPACE").
 __WORKSPACE_DEFAULT__ — path default cuando esa env var no está seteada (ej. "$HOME/gosjoseph").
 __INFRA_REPO__ — nombre del directorio del repo docs-only (memoria durable del harness).
+__HARNESS_DIR__ — directorio de la memoria durable del harness, RELATIVO A LA RAÍZ DEL WORKSPACE (default: `<__INFRA_REPO__>/harness`). Anidarlo (`infra/harness/<app>`) permite que varias apps compartan el MISMO repo docs-only sin pisarse el harness.
 __TOOLING_REPO__ — nombre del directorio del repo de tooling ejecutable (init.sh/loop.sh/feature_list.json).
 __APP_REPOS__ — lista espaciada de nombres de directorio de los repos de apps del proyecto (puede ir vacía).
 __APP_REPO_FULL_CMDS__ — lista espaciada, mismo orden que __APP_REPOS__, de comandos de verificación completa por repo (usados solo bajo INIT_FULL=1).

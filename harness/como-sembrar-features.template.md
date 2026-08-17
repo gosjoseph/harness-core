@@ -48,7 +48,7 @@ Procedimiento para cualquier sesión que agrega entradas nuevas a
    propio `priority` y seguí.
 7. **`self_modifying: true` si la feature toca el harness mismo.** Si sus
    paths de destino incluyen `__TOOLING_REPO__/harness/loop.sh`, `init.sh`,
-   `__INFRA_REPO__/harness/prompts/*.md` o el esquema de
+   `__HARNESS_DIR__/prompts/*.md` o el esquema de
    `feature_list.json`, marcala `self_modifying: true` al sembrarla: el
    loop la saltea (log «requiere sesión standalone») y se ejecuta
    —implementer y verifier— fuera del loop, con el loop apagado. El loop
@@ -69,7 +69,7 @@ Procedimiento para cualquier sesión que agrega entradas nuevas a
 
 Esto es un procedimiento de siembra, no reemplaza el resto del harness: la
 elección de CUÁL feature trabajar en una sesión sigue siendo la de mayor
-prioridad sin blocker (`__INFRA_REPO__/harness/CLAUDE.workspace.md`,
+prioridad sin blocker (`__HARNESS_DIR__/CLAUDE.workspace.md`,
 Startup Workflow).
 
 ## Schema de una feature (10 campos)

@@ -5,7 +5,7 @@
 # POR QUÉ VIVE ACÁ Y NO EN EL REPO DE DOCS: el repo de docs (__INFRA_REPO__) es
 # docs-only, "sin código ejecutable ni JSON de política" — el harness queda
 # partido a propósito: memoria durable (claude-progress, GOAL, checklists,
-# prompts, rúbrica) en __INFRA_REPO__/harness/; ejecutable + estado JSON en
+# prompts, rúbrica) en __HARNESS_DIR__/; ejecutable + estado JSON en
 # __TOOLING_REPO__/harness/.
 #
 # QUÉ CORRE ACÁ Y QUÉ NO: baseline liviano (default) = higiene git (un
@@ -20,6 +20,11 @@
 set -uo pipefail
 WORKSPACE="${__WORKSPACE_ENV_VAR__:-__WORKSPACE_DEFAULT__}"
 INFRA_REPO="__INFRA_REPO__"
+# Memoria durable del harness, RELATIVA a la raíz del workspace (default:
+# "<INFRA_REPO>/harness"). Anidada por app cuando varias comparten el mismo
+# repo docs-only. Ya viene sustituida por bootstrap.sh: no se lee del entorno,
+# porque el harness de un workspace no cambia de lugar entre corridas.
+HARNESS_DIR="__HARNESS_DIR__"
 TOOLING_REPO="__TOOLING_REPO__"
 # Repos de apps del proyecto — lista espaciada, vacía si el proyecto no tiene
 # ninguno todavía. Comando de verificación completo por repo, mismo orden que
@@ -89,7 +94,7 @@ fi
 say "Estado del harness"
 FEATURES="$TOOLING_REPO/harness/feature_list.json"
 [ -f "$FEATURES" ] || bad "falta $FEATURES"
-[ -f "$INFRA_REPO/harness/claude-progress.md" ] || bad "falta $INFRA_REPO/harness/claude-progress.md"
+[ -f "$HARNESS_DIR/claude-progress.md" ] || bad "falta $HARNESS_DIR/claude-progress.md"
 # El feature_list es la máquina de estados del harness: si no PARSEA, el
 # baseline es rojo. `awaiting_verifier` (terminada, esperando sello) NO cuenta
 # para WIP=1 a propósito: solo alguien activamente implementando cuenta, así
@@ -159,7 +164,7 @@ if [ -n "$REGRESSED" ]; then
 fi
 
 if [ "$FAIL" -eq 0 ]; then
-  say "BASELINE VERDE — leé $INFRA_REPO/harness/claude-progress.md y elegí UNA feature."
+  say "BASELINE VERDE — leé $HARNESS_DIR/claude-progress.md y elegí UNA feature."
 else
   say "BASELINE ROJO — arreglá esto ANTES de cualquier feature nueva (Lecture 06)."
 fi

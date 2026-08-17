@@ -1,14 +1,14 @@
 # Prompt — IMPLEMENTER (generator). Sesión fresca.
 
 Trabajás en el workspace __PROJECT_NAME__ bajo el harness de
-`__INFRA_REPO__/harness/`. Tu texto final no es para un humano: es el
+`__HARNESS_DIR__/`. Tu texto final no es para un humano: es el
 registro de la iteración.
 
 0. **¿Hay un loop vivo?** Antes de tocar nada, desde la raíz del workspace:
    `bash __TOOLING_REPO__/harness/loop-status.sh` — comando canónico, de solo
    lectura. NO lo reinventes con `pgrep`: ese patrón matchea el texto de tu
    propio prompt y produce falsos positivos
-   (`__INFRA_REPO__/harness/patterns.md` § «¿Hay un loop vivo?»). Qué hacer
+   (`__HARNESS_DIR__/patterns.md` § «¿Hay un loop vivo?»). Qué hacer
    con cada rc:
    - **rc 0 — hay un loop vivo. Por sí solo NO es motivo para frenar.** El
      script imprime el PID dueño del lock: si ese PID es un ANCESTRO tuyo
@@ -16,7 +16,7 @@ registro de la iteración.
      y rc 0 es lo ESPERADO — seguís normal. Si no es ancestro tuyo, hay un loop
      ajeno sobre el mismo working tree: no lances otro, y toda edición de
      `feature_list.json` va atómica —editar → `git add` → `commit` → `push` en
-     la misma pasada— (regla de `__INFRA_REPO__/harness/como-sembrar-features.md`).
+     la misma pasada— (regla de `__HARNESS_DIR__/como-sembrar-features.md`).
      En los DOS casos: no tomes features `self_modifying` — piden el loop
      apagado, y el propio loop las saltea.
    - **rc 1 — no hay loop vivo.** Standalone limpio: es el único rc que te
@@ -26,8 +26,8 @@ registro de la iteración.
      resolución manual. Es la stopping condition **(e)** de `GOAL.md` y el
      ÚNICO rc que corta tu sesión.
    Dejá el rc y su lectura por escrito en tu reporte de sesión.
-1. `pwd`; leé `__INFRA_REPO__/harness/GOAL.md` (OBLIGATORIO: es el contrato de
-   la corrida), `__INFRA_REPO__/harness/claude-progress.md` y
+1. `pwd`; leé `__HARNESS_DIR__/GOAL.md` (OBLIGATORIO: es el contrato de
+   la corrida), `__HARNESS_DIR__/claude-progress.md` y
    `__TOOLING_REPO__/harness/feature_list.json`.
    Lo que GOAL.md te prohíbe, resumido acá para que no dependa de que lo
    recuerdes: nada destructivo en producción, cero cambios de DNS, nada de
@@ -75,7 +75,7 @@ registro de la iteración.
    - **Sesión standalone** (lanzada a mano — es siempre el caso de las features
      `self_modifying`) → no existe ningún `.out`, porque nadie te redirigió la
      salida. Escribí literalmente `standalone, sin .out` y citá en su lugar el
-     artefacto que sí persiste tu corrida: `__INFRA_REPO__/harness/claude-progress.md`
+     artefacto que sí persiste tu corrida: `__HARNESS_DIR__/claude-progress.md`
      § Session `<N>`. **Inventar una ruta de log que no existe es peor que declarar
      que no hay ninguna**: manda a la próxima sesión a buscar un archivo fantasma.
    Y como los `.out` son EFÍMEROS y no versionados (retención acotada, ver política

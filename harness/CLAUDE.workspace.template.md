@@ -17,7 +17,7 @@ estado donde la próxima sesión continúe sin adivinar. (Curso: Lectures
   su repo).
 - **El harness vive partido, a propósito**: `__INFRA_REPO__` es docs-only,
   sin código ejecutable ni JSON de política.
-  - `__INFRA_REPO__/harness/` — memoria durable del harness:
+  - `__HARNESS_DIR__/` — memoria durable del harness:
     `claude-progress.md`, `GOAL.md`, `clean-state-checklist.md`,
     `session-handoff.md`, `evaluator-rubric.md`, `prompts/`, y la copia
     canónica de este archivo (`CLAUDE.workspace.md`).
@@ -28,7 +28,7 @@ estado donde la próxima sesión continúe sin adivinar. (Curso: Lectures
 ## Startup Workflow ("clock in" — toda sesión, sin excepción)
 
 1. `pwd` — confirmar dónde estás (workspace u repo).
-2. Leer `__INFRA_REPO__/harness/claude-progress.md` — último estado
+2. Leer `__HARNESS_DIR__/claude-progress.md` — último estado
    verificado + next step.
 3. Leer `__TOOLING_REPO__/harness/feature_list.json` — elegir LA feature
    no terminada de mayor prioridad. UNA sola.
@@ -89,26 +89,26 @@ Una feature está done solo si TODO esto es cierto:
 
 ## End of Session ("clock out")
 
-1. Actualizar `__INFRA_REPO__/harness/claude-progress.md` (sesión: goal,
+1. Actualizar `__HARNESS_DIR__/claude-progress.md` (sesión: goal,
    completed, verificación, evidencia, commits, riesgos, next best step).
 2. Actualizar `__TOOLING_REPO__/harness/feature_list.json`.
 3. Registrar blockers/riesgos no resueltos.
 4. Borrar temporales y debug code; build + tests verdes.
 5. Commit descriptivo cuando el estado sea seguro.
-6. Pasar `__INFRA_REPO__/harness/clean-state-checklist.md`. Sesión
+6. Pasar `__HARNESS_DIR__/clean-state-checklist.md`. Sesión
    completa = verificación pasa **Y** clean state pasa.
-7. Sesión larga → `__INFRA_REPO__/harness/session-handoff.md`.
+7. Sesión larga → `__HARNESS_DIR__/session-handoff.md`.
 
 ## Topic docs (cargar solo cuando aplique)
 
 - `__INFRA_REPO__/README.md` — índice del system of record. | Siempre que
   toques `__INFRA_REPO__`.
-- `__INFRA_REPO__/harness/patterns.md` — patrones de diseño del propio
+- `__HARNESS_DIR__/patterns.md` — patrones de diseño del propio
   harness (ouroboros del verifier; protocolo de auto-modificación: el
   loop no trabaja sobre sí mismo, features `self_modifying` en sesión
   standalone). | Antes de escribir una `verification` o tocar
   `loop.sh`/`init.sh`/prompts.
-- `__INFRA_REPO__/harness/GOAL.md` — goal + stopping conditions del loop
+- `__HARNESS_DIR__/GOAL.md` — goal + stopping conditions del loop
   autónomo. **Estado vigente (ON/OFF): lo dice GOAL.md, no este archivo.**
   | Solo en modo loop.
 

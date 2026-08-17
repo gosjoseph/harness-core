@@ -78,7 +78,7 @@ el esqueleto no trae ninguna todavía.
 
 **Cuándo aplica.** Una feature cuyos paths de destino incluyen ejecutables o
 prompts del harness: `__TOOLING_REPO__/harness/loop.sh`, `init.sh`,
-`__INFRA_REPO__/harness/prompts/*.md`, o el esquema de
+`__HARNESS_DIR__/prompts/*.md`, o el esquema de
 `__TOOLING_REPO__/harness/feature_list.json`. También cualquier sesión que,
 sin ser una feature, vaya a editar esos archivos con un loop vivo.
 
@@ -174,8 +174,8 @@ sesión**, nunca el runner.
 
 ### Ya no se reinventa por sesión: es el paso 0 de los dos prompts
 
-`__INFRA_REPO__/harness/prompts/implementer.md` y
-`__INFRA_REPO__/harness/prompts/verifier.md` arrancan con este comando y
+`__HARNESS_DIR__/prompts/implementer.md` y
+`__HARNESS_DIR__/prompts/verifier.md` arrancan con este comando y
 con la lectura de los tres rc escrita.
 
 Lo que ese paso 0 agrega, y que el comando por sí solo no da: **`rc 0` no

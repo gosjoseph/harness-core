@@ -7,7 +7,7 @@
     "do_not_skip_verification": true,
     "verifier_must_be_independent": true,
     "source_of_themes": "Completar: dónde vive el catálogo de temas/prioridades del proyecto (doc humano fuera de este archivo). Este archivo es la máquina de estados, no reemplaza a esos docs.",
-    "self_modifying": "Campo booleano opcional por feature. true = sus paths de destino incluyen ejecutables o prompts del harness: __TOOLING_REPO__/harness/loop.sh, __TOOLING_REPO__/harness/init.sh, __INFRA_REPO__/harness/prompts/*.md, o el esquema de este mismo archivo. El loop NO la toma: active_feature() la saltea en todas las ramas logueando «requiere sesión standalone» y sigue con la siguiente por prioridad; se ejecuta (implementer Y verifier) como sesión standalone fuera del loop. El loop no trabaja sobre sí mismo — protocolo completo: __INFRA_REPO__/harness/patterns.md § «El loop no trabaja sobre sí mismo». Se marca a mano al sembrar."
+    "self_modifying": "Campo booleano opcional por feature. true = sus paths de destino incluyen ejecutables o prompts del harness: __TOOLING_REPO__/harness/loop.sh, __TOOLING_REPO__/harness/init.sh, __HARNESS_DIR__/prompts/*.md, o el esquema de este mismo archivo. El loop NO la toma: active_feature() la saltea en todas las ramas logueando «requiere sesión standalone» y sigue con la siguiente por prioridad; se ejecuta (implementer Y verifier) como sesión standalone fuera del loop. El loop no trabaja sobre sí mismo — protocolo completo: __HARNESS_DIR__/patterns.md § «El loop no trabaja sobre sí mismo». Se marca a mano al sembrar."
   },
   "status_legend": {
     "not_started": "Sin empezar.",

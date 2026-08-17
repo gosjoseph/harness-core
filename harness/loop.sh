@@ -23,12 +23,15 @@
 set -uo pipefail
 
 WORKSPACE="${__WORKSPACE_ENV_VAR__:-__WORKSPACE_DEFAULT__}"
-INFRA_REPO_NAME="__INFRA_REPO__"
 TOOLING_REPO_NAME="__TOOLING_REPO__"
+# Memoria durable del harness, RELATIVA a la raíz del workspace (default:
+# "<INFRA_REPO>/harness"). Anidada por app cuando varias comparten el mismo
+# repo docs-only. Ya viene sustituida por bootstrap.sh.
+HARNESS_DIR="__HARNESS_DIR__"
 HARNESS="$WORKSPACE/$TOOLING_REPO_NAME/harness"
 FEATURES="$HARNESS/feature_list.json"
-PROMPTS="$WORKSPACE/$INFRA_REPO_NAME/harness/prompts"
-PROGRESS="$WORKSPACE/$INFRA_REPO_NAME/harness/claude-progress.md"
+PROMPTS="$WORKSPACE/$HARNESS_DIR/prompts"
+PROGRESS="$WORKSPACE/$HARNESS_DIR/claude-progress.md"
 LOG_DIR="$HARNESS/logs"
 LOG="$LOG_DIR/loop-$(date +%Y%m%d).log"
 
@@ -250,7 +253,7 @@ $extra}" --model "$model" --permission-mode "$PERM_MODE" >"$out" 2>&1 ) &
 
 # ---- arranque --------------------------------------------------------------
 log "=== LOOP ON — $(date '+%Y-%m-%d %H:%M:%S') — model=$LOOP_MODEL verifier=$VERIFIER_MODEL perm=$PERM_MODE"
-log "goal: ver $INFRA_REPO_NAME/harness/GOAL.md. Estado inicial: $(counts)"
+log "goal: ver $HARNESS_DIR/GOAL.md. Estado inicial: $(counts)"
 
 # Stopping condition (e): un baseline rojo ANTES de la primera iteración no lo
 # causó el loop. Se frena todo; apilar trabajo sobre piso podrido lo empeora.
@@ -281,7 +284,7 @@ while :; do
   if [ "$SAME" -gt 3 ]; then
     log "(c) $ACTIVE lleva 3 intentos fallidos — marcándola blocked con diagnóstico"
     run_agent "block-$ACTIVE" "$PROMPTS/implementer.md" "$LOOP_MODEL" \
-"STOPPING CONDITION (c) de $INFRA_REPO_NAME/harness/GOAL.md: la feature $ACTIVE lleva 3 iteraciones consecutivas sin llegar a passing. NO la implementes de nuevo. Tu única tarea: marcarla \"blocked\" en $TOOLING_REPO_NAME/harness/feature_list.json con un diagnóstico en notes que diga qué se intentó en cada pasada y con qué salida (leé claude-progress.md y harness/logs/), commitear ese cambio, y terminar. Después el loop sigue con la siguiente feature por prioridad."
+"STOPPING CONDITION (c) de $HARNESS_DIR/GOAL.md: la feature $ACTIVE lleva 3 iteraciones consecutivas sin llegar a passing. NO la implementes de nuevo. Tu única tarea: marcarla \"blocked\" en $TOOLING_REPO_NAME/harness/feature_list.json con un diagnóstico en notes que diga qué se intentó en cada pasada y con qué salida (leé claude-progress.md y harness/logs/), commitear ese cambio, y terminar. Después el loop sigue con la siguiente feature por prioridad."
     LAST=""; SAME=0; continue
   fi
 
@@ -318,5 +321,5 @@ while :; do
   RECOVERING=0
 done
 
-log "=== LOOP OFF — $(counts) — revisá $INFRA_REPO_NAME/harness/claude-progress.md y el log: $LOG"
+log "=== LOOP OFF — $(counts) — revisá $HARNESS_DIR/claude-progress.md y el log: $LOG"
 exit 0

@@ -10,7 +10,7 @@
 # Uso: bash bootstrap.sh <app> [directorio destino, default: cwd]
 # Config opcional por variable de entorno (todas con default derivado de
 # <app> — ver PARAMS.md para el significado de cada una): PROJECT_NAME,
-# WORKSPACE_ENV_VAR, WORKSPACE_DEFAULT, INFRA_REPO, TOOLING_REPO,
+# WORKSPACE_ENV_VAR, WORKSPACE_DEFAULT, INFRA_REPO, HARNESS_DIR, TOOLING_REPO,
 # APP_REPOS, APP_REPO_FULL_CMDS, LOOP_MODEL, VERIFIER_MODEL, TODAY.
 # Nunca lee de stdin: corre no-interactivo siempre, para poder invocarse
 # desde un test de sandbox sin bloquearse.
@@ -27,6 +27,11 @@ PROJECT_NAME="${PROJECT_NAME:-$APP}"
 WORKSPACE_ENV_VAR="${WORKSPACE_ENV_VAR:-${APP_UPPER}_WORKSPACE}"
 WORKSPACE_DEFAULT="${WORKSPACE_DEFAULT:-\$HOME/$APP}"
 INFRA_REPO="${INFRA_REPO:-infra}"
+# Directorio de la memoria durable, RELATIVO a la raíz del workspace (no al
+# repo): por eso el default lleva el nombre del repo docs-only adelante.
+# Anidarlo (`infra/harness/<app>`) deja que varias apps compartan el MISMO
+# repo docs-only sin pisarse el harness — el caso que lo motiva.
+HARNESS_DIR="${HARNESS_DIR:-$INFRA_REPO/harness}"
 TOOLING_REPO="${TOOLING_REPO:-${APP}_tooling}"
 APP_REPOS="${APP_REPOS:-}"
 APP_REPO_FULL_CMDS="${APP_REPO_FULL_CMDS:-}"
@@ -39,6 +44,7 @@ RENDER_ARGS=(
   "WORKSPACE_ENV_VAR=$WORKSPACE_ENV_VAR"
   "WORKSPACE_DEFAULT=$WORKSPACE_DEFAULT"
   "INFRA_REPO=$INFRA_REPO"
+  "HARNESS_DIR=$HARNESS_DIR"
   "TOOLING_REPO=$TOOLING_REPO"
   "APP_REPOS=$APP_REPOS"
   "APP_REPO_FULL_CMDS=$APP_REPO_FULL_CMDS"
@@ -48,14 +54,16 @@ RENDER_ARGS=(
 )
 
 TOOLING="$DEST/$TOOLING_REPO"
-INFRA="$DEST/$INFRA_REPO"
+# La memoria durable ya NO se deriva de $INFRA_REPO acá: sale de HARNESS_DIR,
+# que es workspace-relativo (su default sí lo lleva adelante).
+MEMORY="$DEST/$HARNESS_DIR"
 
 say() { printf '==> %s\n' "$*"; }
 
-say "Generando harness de $PROJECT_NAME en $DEST ($TOOLING_REPO/ + $INFRA_REPO/)"
+say "Generando harness de $PROJECT_NAME en $DEST ($TOOLING_REPO/ + $HARNESS_DIR/)"
 
 mkdir -p "$TOOLING/harness/logs" "$TOOLING/scripts" "$TOOLING/.githooks" \
-         "$INFRA/harness/prompts"
+         "$MEMORY/prompts"
 
 # render_file: renderiza UN archivo fuente al destino final, usando
 # scripts/render.sh (que trabaja sobre árboles) sobre un directorio
@@ -88,17 +96,17 @@ chmod +x "$TOOLING/.githooks/pre-push"
 # ---- 5. feature_list.json inicial, vacío -----------------------------------
 render_file "$HERE/harness/feature_list.template.json" "$TOOLING/harness/feature_list.json"
 
-# ---- 6-9. skeleton de infra/harness/ (memoria durable, a completar) -------
-render_file "$HERE/harness/GOAL.template.md" "$INFRA/harness/GOAL.md"
-render_file "$HERE/harness/claude-progress.template.md" "$INFRA/harness/claude-progress.md"
-render_file "$HERE/harness/session-handoff.md" "$INFRA/harness/session-handoff.md"
-render_file "$HERE/harness/clean-state-checklist.md" "$INFRA/harness/clean-state-checklist.md"
-render_file "$HERE/harness/evaluator-rubric.template.md" "$INFRA/harness/evaluator-rubric.md"
-render_file "$HERE/harness/como-sembrar-features.template.md" "$INFRA/harness/como-sembrar-features.md"
-render_file "$HERE/harness/patterns.template.md" "$INFRA/harness/patterns.md"
-render_file "$HERE/harness/CLAUDE.workspace.template.md" "$INFRA/harness/CLAUDE.workspace.md"
-render_file "$HERE/harness/prompts/implementer.md" "$INFRA/harness/prompts/implementer.md"
-render_file "$HERE/harness/prompts/verifier.md" "$INFRA/harness/prompts/verifier.md"
+# ---- 6-9. skeleton de la memoria durable ($HARNESS_DIR, a completar) ------
+render_file "$HERE/harness/GOAL.template.md" "$MEMORY/GOAL.md"
+render_file "$HERE/harness/claude-progress.template.md" "$MEMORY/claude-progress.md"
+render_file "$HERE/harness/session-handoff.md" "$MEMORY/session-handoff.md"
+render_file "$HERE/harness/clean-state-checklist.md" "$MEMORY/clean-state-checklist.md"
+render_file "$HERE/harness/evaluator-rubric.template.md" "$MEMORY/evaluator-rubric.md"
+render_file "$HERE/harness/como-sembrar-features.template.md" "$MEMORY/como-sembrar-features.md"
+render_file "$HERE/harness/patterns.template.md" "$MEMORY/patterns.md"
+render_file "$HERE/harness/CLAUDE.workspace.template.md" "$MEMORY/CLAUDE.workspace.md"
+render_file "$HERE/harness/prompts/implementer.md" "$MEMORY/prompts/implementer.md"
+render_file "$HERE/harness/prompts/verifier.md" "$MEMORY/prompts/verifier.md"
 
 # ---- 10. resumen imprimible ------------------------------------------------
 cat <<SUMMARY
@@ -109,18 +117,18 @@ Generado:
   $TOOLING_REPO/harness/{init.sh,loop.sh,loop-status.sh,feature_list.json,logs/}
   $TOOLING_REPO/scripts/{check-hook.sh,check-priority-ties.mjs,inflight.mjs,setup-hooks.sh}
   $TOOLING_REPO/.githooks/pre-push
-  $INFRA_REPO/harness/{GOAL.md,claude-progress.md,session-handoff.md,clean-state-checklist.md,evaluator-rubric.md,como-sembrar-features.md,patterns.md,CLAUDE.workspace.md}
-  $INFRA_REPO/harness/prompts/{implementer.md,verifier.md}
+  $HARNESS_DIR/{GOAL.md,claude-progress.md,session-handoff.md,clean-state-checklist.md,evaluator-rubric.md,como-sembrar-features.md,patterns.md,CLAUDE.workspace.md}
+  $HARNESS_DIR/prompts/{implementer.md,verifier.md}
 
 Pendiente de completar A MANO antes de encender el loop (bootstrap NO lo
 adivina por vos):
-  - $INFRA_REPO/harness/GOAL.md: el goal real de la corrida, el catálogo de
+  - $HARNESS_DIR/GOAL.md: el goal real de la corrida, el catálogo de
     consolas/acciones PROHIBIDAS del negocio, la política de costo, y pasar
     ESTADO de OFF a ON cuando corresponda.
   - $TOOLING_REPO/harness/feature_list.json: sembrar las features reales
-    (arranca con features: [] — ver $INFRA_REPO/harness/como-sembrar-features.md).
+    (arranca con features: [] — ver $HARNESS_DIR/como-sembrar-features.md).
   - El CLAUDE.md de cada repo de apps nuevo (uno por repo, reglas locales).
-  - $INFRA_REPO/harness/CLAUDE.workspace.md § «Lanzamiento del loop»: el
+  - $HARNESS_DIR/CLAUDE.workspace.md § «Lanzamiento del loop»: el
     detalle real de la máquina que va a correr el loop.
   - Si $TOOLING_REPO o $INFRA_REPO todavía no son repos git: \`git init -b main\`
     en cada uno, y activar los hooks con

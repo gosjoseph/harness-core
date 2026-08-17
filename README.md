@@ -78,6 +78,23 @@ script termina imprimiendo qué generó y qué queda pendiente de completar a
 mano (el `GOAL.md` real, el catálogo de restricciones del negocio, sembrar
 `feature_list.json`).
 
+### Varias apps sobre el MISMO repo docs-only: `HARNESS_DIR`
+
+Por default la memoria durable del harness va a `<__INFRA_REPO__>/harness/`
+(o sea `infra/harness/` con los defaults). Dos apps que comparten el mismo
+repo `infra` se pisarían ahí. `HARNESS_DIR` —relativo a la raíz del
+workspace, no al repo— la anida por app:
+
+```bash
+HARNESS_DIR=infra/harness/kayzen bash /ruta/a/harness-core/bootstrap.sh kayzen
+```
+
+Genera la memoria en `infra/harness/kayzen/` (`GOAL.md`,
+`claude-progress.md`, `prompts/`, …) y deja `infra/harness/` raíz intacto
+para la otra app. El `init.sh` y el `loop.sh` generados resuelven sus rutas
+desde esa variable, ya sustituida: no hay nada que exportar en runtime.
+Sin la variable, el comportamiento es exactamente el de siempre.
+
 ## Variables de parametrización
 
 Declaración única en `PARAMS.md` (una por línea, `__NOMBRE__` + descripción).
@@ -91,6 +108,7 @@ Esta tabla documenta cada una con su default sugerido — incidentalmente,
 | `__WORKSPACE_ENV_VAR__` | `<PROYECTO>_WORKSPACE` | nombre de la env var de la raíz del workspace |
 | `__WORKSPACE_DEFAULT__` | `$HOME/<proyecto>` | path default si esa env var no está seteada |
 | `__INFRA_REPO__` | `infra` | directorio del repo docs-only (memoria durable) |
+| `__HARNESS_DIR__` | `<__INFRA_REPO__>/harness` | directorio de la memoria durable del harness, relativo a la raíz del workspace; anidarlo (`infra/harness/<app>`) deja que varias apps compartan un mismo repo docs-only |
 | `__TOOLING_REPO__` | `<proyecto>_tooling` | directorio del repo de tooling ejecutable |
 | `__APP_REPOS__` | (vacío o lista espaciada) | repos de apps del proyecto |
 | `__APP_REPO_FULL_CMDS__` | (vacío o lista espaciada) | comando de suite completa por repo de `__APP_REPOS__`, mismo orden |

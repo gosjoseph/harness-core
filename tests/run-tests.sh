@@ -31,6 +31,7 @@ RENDER_ARGS=(
   "WORKSPACE_ENV_VAR=$WORKSPACE_ENV_VAR"
   "WORKSPACE_DEFAULT=/no/deberia/usarse"
   "INFRA_REPO=infra"
+  "HARNESS_DIR=infra/harness"
   "TOOLING_REPO=tooling"
   "APP_REPOS="
   "APP_REPO_FULL_CMDS="
@@ -283,6 +284,52 @@ else
   bad "MULTI-LOOP: colisión o resultado inesperado (rc1=$ML_RC1 rc2=$ML_RC2)"
 fi
 rm -rf "$ML1" "$ML2"
+
+# ---- Test 8 (HARNESS_DIR): bootstrap con la memoria durable ANIDADA --------
+# El caso que motiva la variable: dos apps compartiendo el MISMO repo
+# docs-only. Acá se prueba la mitad verificable en sandbox — que el harness
+# se genere bajo `infra/harness/demoapp/`, que NO quede nada suelto en la raíz
+# `infra/harness/`, y que los artefactos generados resuelvan por la variable
+# en vez de por un `<INFRA_REPO>/harness/` hardcodeado.
+HD="$(mktemp -d)"
+HD_OUT="$(cd "$HD" && HARNESS_DIR='infra/harness/demoapp' bash "$ROOT/bootstrap.sh" demoapp 2>&1)"
+HD_RC=$?
+HD_INIT="$HD/demoapp_tooling/harness/init.sh"
+HD_LOOP="$HD/demoapp_tooling/harness/loop.sh"
+if [ "$HD_RC" -eq 0 ] \
+  && [ -f "$HD/infra/harness/demoapp/GOAL.md" ] \
+  && [ -f "$HD/infra/harness/demoapp/claude-progress.md" ] \
+  && [ -f "$HD/infra/harness/demoapp/prompts/implementer.md" ] \
+  && [ ! -e "$HD/infra/harness/GOAL.md" ]; then
+  ok "bootstrap.sh con HARNESS_DIR=infra/harness/demoapp: memoria durable anidada, nada suelto en la raíz infra/harness/"
+else
+  bad "bootstrap.sh con HARNESS_DIR anidado: layout inesperado (rc=$HD_RC): $(printf '%s' "$HD_OUT" | tail -10)"
+fi
+
+# Los artefactos generados citan la variable, y ningún `<INFRA_REPO>/harness/`
+# hardcodeado sobrevive a la sustitución.
+if grep -q 'infra/harness/demoapp' "$HD_INIT" \
+  && grep -q 'infra/harness/demoapp' "$HD_LOOP" \
+  && ! grep -qE '\$\{?INFRA_REPO(_NAME)?\}?/harness/' "$HD_INIT" "$HD_LOOP"; then
+  ok "init.sh/loop.sh generados resuelven por HARNESS_DIR, sin <INFRA_REPO>/harness/ hardcodeado"
+else
+  bad "init.sh/loop.sh generados NO resuelven por HARNESS_DIR (o quedó un <INFRA_REPO>/harness/ hardcodeado)"
+fi
+
+init_repo "$HD/demoapp_tooling"
+init_repo "$HD/infra"
+( cd "$HD/demoapp_tooling" && sh scripts/setup-hooks.sh >/dev/null )
+HD_INIT_OUT="$(cd "$HD" && DEMOAPP_WORKSPACE="$HD" bash demoapp_tooling/harness/init.sh 2>&1)"
+HD_INIT_RC=$?
+( cd "$HD/demoapp_tooling" && sh scripts/check-hook.sh >/dev/null 2>&1 ); HD_HOOK_RC=$?
+( cd "$HD/demoapp_tooling" && node scripts/check-priority-ties.mjs harness/feature_list.json >/dev/null 2>&1 ); HD_TIES_RC=$?
+if [ "$HD_INIT_RC" -eq 0 ] && printf '%s' "$HD_INIT_OUT" | grep -q "BASELINE VERDE" \
+  && [ "$HD_HOOK_RC" -eq 0 ] && [ "$HD_TIES_RC" -eq 0 ]; then
+  ok "harness anidado ARRANCA: init.sh → BASELINE VERDE, y sus gates (check-hook, check-priority-ties) en rc 0"
+else
+  bad "harness anidado NO arrancó (init rc=$HD_INIT_RC hook rc=$HD_HOOK_RC ties rc=$HD_TIES_RC): $(printf '%s' "$HD_INIT_OUT" | tail -10)"
+fi
+rm -rf "$HD"
 
 echo
 echo "=== resultado: $PASS/$((PASS+FAIL)) tests OK ==="
