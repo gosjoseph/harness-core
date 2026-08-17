@@ -58,6 +58,11 @@ command -v claude >/dev/null 2>&1 || { echo "✋ falta el CLI 'claude' en el PAT
 [ -f "$FEATURES" ] || { echo "✋ falta $FEATURES" >&2; exit 64; }
 
 cd "$WORKSPACE" || exit 64
+# Canonicalización: a partir de acá `$WORKSPACE` es un path ABSOLUTO y sin
+# symlinks. Es lo que se escribe en el `workspace=` del lock, y es contra eso
+# que `loop-status.sh` decide si un lock (o un runner que ve `ps`) es de ESTE
+# workspace o de otro loop de la misma máquina (TPL-F6).
+WORKSPACE="$(pwd -P)"
 
 # ---- lock single-instance ---------------------------------------------------
 # POR QUÉ EXISTE. Sin lock, dos schedulers vivos sobre el mismo working tree

@@ -331,6 +331,99 @@ else
 fi
 rm -rf "$HD"
 
+# ---- Test 9 (TPL-F6, MULTI-WORKSPACE): loop-status.sh decide por SU workspace
+# El caso que motiva la feature: con dos workspaces bootstrapeados en la MISMA
+# máquina y UN solo loop vivo (el del primero), `loop-status.sh` del primero
+# tiene que dar rc 0 y el del SEGUNDO rc 1. Antes del fix el segundo daba rc 0:
+# el fallback `ps|grep` matcheaba cualquier `bash .../loop.sh` del host y
+# forzaba la respuesta conservadora en un workspace sin ningún loop.
+#
+# El loop se mantiene vivo con un `claude` falso que duerme: así el runner real
+# escribe su lock real y queda corriendo mientras se miden los dos workspaces.
+# No hay mock de `ps` ni de `/proc` — el proceso medido es un `loop.sh` real.
+MW1="$(mktemp -d)"; MW2="$(mktemp -d)"
+MW_BIN="$(mktemp -d)"
+cat > "$MW_BIN/claude" <<'SH'
+#!/usr/bin/env bash
+# Fake CLI que BLOQUEA: mantiene vivo al runner mientras el test mide.
+sleep 120
+SH
+chmod +x "$MW_BIN/claude"
+( cd "$MW1" && bash "$ROOT/bootstrap.sh" appuno >/dev/null )
+( cd "$MW2" && bash "$ROOT/bootstrap.sh" appdos >/dev/null )
+for pair in "$MW1 appuno" "$MW2 appdos"; do
+  set -- $pair
+  init_repo "$1/${2}_tooling"
+  init_repo "$1/infra"
+  ( cd "$1/${2}_tooling" && sh scripts/setup-hooks.sh >/dev/null )
+  cat > "$1/${2}_tooling/harness/feature_list.json" <<JSON
+{"project":"$2","last_updated":"2026-01-01","rules":{},"status_legend":{},
+ "features":[{"id":"MW-1","priority":1,"area":"test","tema":"test","title":"fixture",
+ "user_visible_behavior":"ninguno","status":"not_started","verification":["true"],
+ "evidence":[],"notes":""}]}
+JSON
+  ( cd "$1/${2}_tooling" && git add -A && git commit -q -m "seed feature" )
+done
+
+# `exec` para que el PID de $! SEA el loop.sh (y no un shell intermedio): así
+# su cwd es el workspace y el ancla que mide el script es la real, no la de un
+# wrapper. El argv queda RELATIVO a propósito — es como se lanza de verdad.
+( cd "$MW1" && APPUNO_WORKSPACE="$MW1" PATH="$MW_BIN:$PATH" LOOP_MAX_ITER=1 \
+  LOOP_PERMISSION_MODE=bypassPermissions exec bash appuno_tooling/harness/loop.sh >/dev/null 2>&1 ) &
+MW_PID=$!
+MW_LOCK="$MW1/appuno_tooling/harness/.loop.lock"
+MW_WAIT=0
+while [ ! -f "$MW_LOCK" ] && [ "$MW_WAIT" -lt 60 ]; do sleep 0.5; MW_WAIT=$((MW_WAIT+1)); done
+
+MW_OUT1="$(cd "$MW1" && bash "$MW1/appuno_tooling/harness/loop-status.sh" 2>&1)"; MW_RC1=$?
+MW_OUT2="$(cd "$MW2" && bash "$MW2/appdos_tooling/harness/loop-status.sh" 2>&1)"; MW_RC2=$?
+
+kill "$MW_PID" 2>/dev/null
+pkill -P "$MW_PID" 2>/dev/null
+wait "$MW_PID" 2>/dev/null
+pkill -f "$MW_BIN/claude" 2>/dev/null
+
+if [ -f "$MW_LOCK" ] || [ "$MW_RC1" -eq 0 ]; then
+  : # el runner llegó a levantar; el veredicto lo dan los rc de abajo
+fi
+if [ "$MW_RC1" -eq 0 ] && [ "$MW_RC2" -eq 1 ]; then
+  ok "MULTI-WORKSPACE: un loop vivo en el workspace A → loop-status.sh de A rc=0 y el de B rc=1 (sin falso positivo cruzado)"
+else
+  bad "MULTI-WORKSPACE: rc inesperados (A=$MW_RC1 esperado 0, B=$MW_RC2 esperado 1)
+--- A ---
+$MW_OUT1
+--- B ---
+$MW_OUT2"
+fi
+
+# El workspace B tiene que DECIR que descartó un runner ajeno, no callarlo: si
+# lo ignorara en silencio, un loop huérfano de otro workspace sería invisible.
+if printf '%s' "$MW_OUT2" | grep -qi "otro workspace"; then
+  ok "MULTI-WORKSPACE: el workspace sin loop reporta explícitamente el runner de OTRO workspace que descartó"
+else
+  bad "MULTI-WORKSPACE: el workspace sin loop no menciona el runner ajeno descartado: $MW_OUT2"
+fi
+
+# Lock AJENO: un lock con `workspace=` de otro workspace no puede hacer pasar
+# por vivo al loop de este (el lock es por workspace, y ahora se verifica).
+MW_FOREIGN="$(mktemp)"
+{
+  printf 'pid=%s\n' "$$"
+  printf 'pid_start_time=%s\n' "$(ps -o lstart= -p "$$" | sed 's/^ *//; s/ *$//')"
+  printf 'started_at=test\n'
+  printf 'workspace=%s\n' "$MW1"
+  printf 'log=/dev/null\n'
+} > "$MW_FOREIGN"
+MW_OUT3="$(cd "$MW2" && LOOP_LOCK="$MW_FOREIGN" bash "$MW2/appdos_tooling/harness/loop-status.sh" 2>&1)"; MW_RC3=$?
+rm -f "$MW_FOREIGN"
+if [ "$MW_RC3" -eq 1 ] && printf '%s' "$MW_OUT3" | grep -qi "otro workspace"; then
+  ok "loop-status.sh: un lock con workspace= ajeno (PID vivo incluido) NO cuenta como loop de este workspace → rc=1"
+else
+  bad "loop-status.sh: lock ajeno tratado como propio (rc=$MW_RC3): $MW_OUT3"
+fi
+
+rm -rf "$MW1" "$MW2" "$MW_BIN"
+
 echo
 echo "=== resultado: $PASS/$((PASS+FAIL)) tests OK ==="
 [ "$FAIL" -eq 0 ]

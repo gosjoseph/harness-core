@@ -27,7 +27,18 @@ copia+sustitución, sin dependencia de submódulo) desde el directorio destino
 - `harness/init.sh`, `harness/loop.sh` — el baseline y el runner del loop,
   PARAMETRIZADOS vía las variables de `PARAMS.md`.
 - `harness/loop-status.sh` — lectura de solo lectura de si hay un loop vivo
-  (lockfile + fallback `pgrep` anclado al intérprete), GENÉRICO.
+  (lockfile + fallback `pgrep` anclado al intérprete), GENÉRICO. **La pregunta
+  es siempre por ESTE workspace, no por la máquina** (TPL-F6): con varios
+  proyectos bootstrapeados en el mismo host corre un loop por app, así que las
+  dos vías se anclan a la raíz del workspace — el lock tiene que declarar
+  `workspace=` igual a la de este harness, y cada candidato de `ps` se atribuye
+  a un workspace por su argv absoluto o por su cwd (`/proc/<pid>/cwd`, con
+  `lsof -d cwd` de respaldo; `loop.sh` hace `cd "$WORKSPACE"` antes de nada).
+  Un candidato NO atribuible (sin `/proc` ni `lsof`, o de otro usuario) se
+  cuenta como propio y se reporta aparte: la respuesta conservadora queda donde
+  falta información, no donde la información alcanza para distinguir.
+  `LOOP_WORKSPACE` fuerza la raíz del workspace (solo para tests); por default
+  se deriva de la ubicación del script, no del CWD de quien lo invoca.
 - `harness/session-handoff.md`, `harness/clean-state-checklist.md` — templates
   de clock-out, PARAMETRIZADOS solo en las rutas que citan.
 - `harness/GOAL.template.md`, `harness/claude-progress.template.md`,
@@ -134,6 +145,12 @@ descartable. Ver `tests/run-tests.sh` para el detalle de qué renderiza y qué
 asierta (incluye 1 test que corre `loop.sh` real con `LOOP_MAX_ITER=1` sobre
 el sandbox y confirma la salida `STOP(max_iter)` / rc 5 — el backstop de fuga
 diseñado, no un error).
+
+El test MULTI-WORKSPACE bootstrapea DOS workspaces descartables, deja un
+`loop.sh` real vivo en el primero (con un `claude` falso que duerme) y exige
+`loop-status.sh` → rc 0 en el primero y rc 1 en el segundo. No mockea `ps` ni
+`/proc`: el proceso que mide es un runner real, y por eso vale como prueba de
+que el falso positivo cruzado de TPL-F6 no vuelve.
 
 ## Gate de push
 
